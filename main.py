@@ -67,19 +67,13 @@ async def generate_openai_chat_response(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
 
-async def generate_code_completion(prompt: str, max_tokens: int = 100, model: str = "o1-mini") -> str:
-    """
-    Generates a code-completion hint using the chat completions endpoint.
-    Note: This model supports only a temperature of 1.
-    """
+async def generate_code_completion(prompt: str, max_completion_tokens: int = 200, model: str = "o1-mini") -> str:
     try:
         response = await aclient.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "user", "content": prompt}],
             temperature=1,  # Must be 1 for o1-mini.
-            max_tokens=max_tokens
+            max_completion_tokens=max_completion_tokens  # Use this parameter instead of max_tokens.
         )
         result = response.choices[0].message.content.strip()
         if not result:
@@ -87,6 +81,7 @@ async def generate_code_completion(prompt: str, max_tokens: int = 100, model: st
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI Code Completion API error: {str(e)}")
+
 
 @app.post("/assistant", response_model=AssistantResponse)
 async def unified_assistant(request: AssistantRequest):
@@ -100,7 +95,7 @@ async def unified_assistant(request: AssistantRequest):
             f"{request.query}\n"
             f"Context: {course_material}"
         )
-        completed_code = await generate_code_completion(prompt, max_tokens=150, model="o1-mini")
+        completed_code = await generate_code_completion(prompt, max_completion_tokens=150, model="o1-mini")
         return AssistantResponse(response=completed_code)
 
     elif "study plan" in query_lower or "plan" in query_lower:
@@ -112,7 +107,7 @@ async def unified_assistant(request: AssistantRequest):
             f"Course Material: {course_material}\n"
         )
         system_message = "You are an academic assistant that creates detailed study plans for students."
-        plan = await generate_openai_chat_response(system_message, user_message, max_tokens=300)
+        plan = await generate_openai_chat_response(system_message, user_message, max_tokens=200)
         return AssistantResponse(response=plan)
     
     elif "assignment" in query_lower or "homework" in query_lower or "hint" in query_lower:
