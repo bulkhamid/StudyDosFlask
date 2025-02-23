@@ -1,95 +1,101 @@
-# StudyDos
+# StudyDos Project
 
-**Study Smarter, Think Deeper**
+**StudyDos** is a full-stack application designed to help students use AI responsibly, preserving their critical thinking skills while providing valuable hints to achieve academic goals. The frontend is built with **React.js**, and the backend is powered by **Express.js**, while the database is managed using **MongoDB Atlas** with **AWS**. The application also integrates an **AI-powered LLM module** developed with **Python 3.8+** and **pip**, utilizing an **OpenAI API key**. The platform is designed to prevent over-reliance on AI by offering suggestions instead of direct answers, ensuring students remain engaged in the learning process. In the future, StudyDos will integrate with school systems, enabling access to educational materials and further refining the LLM by training it on school databases.
 
-StudyDos is a cost-efficient, AI-powered academic assistant designed to empower students with guided hints, tailored study plans, and code completion support—while preserving critical thinking and academic integrity. With multi-modal features such as file uploads and simulated image recognition, StudyDos adapts to various learning styles and course materials.
+## Figma Prototype
 
-## Features
+Explore the [StudyDos UI Figma Prototype](https://www.figma.com/proto/SHTmZnace3LfyiFJSJJyuE/StudyDos?page-id=1%3A2&node-id=1-145&viewport=-7147%2C127%2C0.5&scaling=scale-down-width&content-scaling=fixed&starting-point-node-id=1%3A145&embed-host=share).
 
-- **Tailored Academic Guidance:**  
-  Provides assignment hints and detailed study plans without giving away complete solutions.
-  
-- **Code Completion:**  
-  Uses a cost-efficient AI model for code completions to help with programming assignments.
-  
-- **Multi-Modal Input:**  
-  Supports file uploads and simulated image recognition for enhanced content analysis.
-  
-- **Unified Endpoint:**  
-  A single, intelligent endpoint distinguishes between study plan requests, assignment hints, and code completion needs.
-  
-- **Secure Configuration:**  
-  Environment variables are managed via a `.env` file using python-dotenv for easy and secure configuration.
+> **Note:** GitHub README files do not support iframes. Click the link or the image below to view the prototype in your browser.
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- [pip](https://pip.pypa.io/en/stable/)
-- An OpenAI API key
-
-### Installation
-
-1. **Clone the Repository:**
-
-   ```
-   git clone https://github.com/your_username/StudyDos.git
-   cd StudyDos
-   ```
-
-2. **Create and Activate a Virtual Environment:**
-
-    ```
-    python -m venv env
-    # On Windows:
-    env\Scripts\activate
-    # On Unix or MacOS:
-    source env/bin/activate
-    ```
-3. **Install Dependencies:**
-    ```
-    pip install -r requirements.txt
-    ```
-4. **Create a .env File:**
-    
-    In the project root, create a `.env` file with your OpenAI API key:
-    ```
-    OPENAI_API_KEY=your_openai_api_key_here
-    ```
-### API Endpoints
-- `POST /assistant`
-    A unified endpoint that returns:
-
-    - A detailed 10-day study plan if the query contains keywords like "study plan" or "plan".
-    - A guided assignment hint if the query contains keywords like "assignment", "homework", or "hint".
-    - Code completion for programming-related queries if the query contains keywords like "code completion" or "complete code".
-- `POST /upload`
-    Upload files (e.g., text documents) for further processing.
-
-- `POST /image_recognition`
-    Simulated image recognition endpoint that returns dummy recognized text from an image.
-
-### Testing
-#### Automated Tests
-    Tests are written using pytest. To run the tests:
-    ```pytest --maxfail=1 --disable-warnings -q```
-
-#### Postman Collection
-An updated Postman collection is provided to test all endpoints. Import the `CivicHacks_MultiModal_Tests.postman_collection.json` file into Postman and run the collection to verify functionality.
+[![StudyDos Figma Prototype](Main_page.png)](https://www.figma.com/proto/SHTmZnace3LfyiFJSJJyuE/StudyDos?page-id=1%3A2&node-id=1-145&viewport=-7147%2C127%2C0.5&scaling=scale-down-width&content-scaling=fixed&starting-point-node-id=1%3A145&embed-host=share)
 
 
-### Project Story
-StudyDos was inspired by the need for academic tools that guide students without spoon-feeding answers. We created an AI assistant that supports deeper learning by offering hints and structured study plans while also providing code assistance for programming assignments. Through integrating OpenAI’s latest multi-modal features with FastAPI, we built a system that is both cost-efficient and versatile. Despite challenges such as API migration and multi-modal integration, our team delivered a robust prototype that empowers students to learn actively and responsibly.
-
-### What's Next
-- Enhanced AI Capabilities: Implement adaptive learning algorithms for personalized study recommendations.
-- Robust Database Integration: Expand course material management for more tailored responses.
-- User Feedback Integration: Build analytics and feedback loops to continuously refine the assistant.
-- Expanded Multi-Modal Support: Improve image recognition and file processing to handle a broader range of academic content.
-
-### License
-This project is licensed under the MIT License.
 
 
-**StudyDos** – Your smart study buddy for a brighter academic future.
+
+## 📌 Project Structure
+```
+StudyDos/
+│── backend/        # Backend (Node.js, Express)
+│── frontend/       # Frontend (React, Vue, or Angular)
+│── fastapi/        # LLM API (FastAPI, Flask)
+│── docker-compose.yml
+│── .gitmodules
+│── README.md
+```
+
+## 🚀 Getting Started
+
+### 1️⃣ LLM (FastAPI) Setup
+```bash
+# Navigate to the fastapi folder
+cd fastapi
+
+# Create a virtual environment
+python -m venv env
+
+# Activate the virtual environment
+# On Windows:
+env\Scripts\activate
+# On Unix or MacOS:
+source env/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create a .env file with your OpenAI API key
+echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
+
+# Run the FastAPI server
+uvicorn main:app --reload
+```
+
+### 2️⃣ Backend (Express.js) Setup
+```bash
+# Navigate to the backend folder
+cd backend
+
+# Install dependencies
+npm install express
+npm install mongoose
+npm install dotenv
+npm install cors
+npm install axios
+
+# Create a .env file in the backend folder
+# Add the following environment variables
+# MONGO_URI=your_mongodb_connection_string
+# PORT=your_desired_port
+
+# Create a .gitignore file and exclude environment-sensitive files
+echo "node_modules\n.env" > .gitignore
+
+# Start the backend server
+node src/server.js
+```
+
+### 3️⃣ Frontend (React) Setup
+```bash
+# Navigate to the frontend folder
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+## 🛠️ Running the Full Project
+To run all components together, open three terminal windows and run each setup in its respective folder. Once everything is up and running, you can access the frontend in your browser and interact with the backend and LLM service.
+
+---
+
+### 🎯 Notes
+- Ensure you have **Node.js**, **npm**, and **Python** installed before running the setup.
+- The `.env` files should not be committed to version control.
+- If using `git submodule` for `fastapi`, initialize it with:
+  ```bash
+  git submodule update --init --recursive
+  ```
