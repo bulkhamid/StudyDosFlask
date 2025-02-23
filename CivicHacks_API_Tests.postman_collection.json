@@ -1,0 +1,303 @@
+{
+    "info": {
+      "_postman_id": "b8a2d9e3-1234-4c5e-9f6d-abcdef123456",
+      "name": "CivicHacks MultiModal Assistant API Tests",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Study Plan Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"query\": \"I need a 10-day study plan for Artificial Intelligence starting from 2025-03-01.\",\n  \"course_material\": \"Optional course material if available.\"\n}"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "pm.test(\"Response contains 'Day 1:'\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.response).to.include(\"Day 1:\");",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Assignment Hint Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"query\": \"Can you give me a hint on how to approach the assignment on neural networks?\",\n  \"course_material\": \"Optional course material if available.\"\n}"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "pm.test(\"Response contains a hint\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    var text = jsonData.response.toLowerCase();",
+                "    pm.expect(text).to.satisfy(function(val) {",
+                "        return val.includes(\"consider reviewing\") || val.includes(\"breaking the problem\");",
+                "    });",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Code Completion Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"query\": \"Please perform code completion: complete code for a function that adds two numbers.\",\n  \"course_material\": \"Optional context for code.\"\n}"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "pm.test(\"Response contains a completed function\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.response).to.include(\"def completed_function():\");",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Unclear Query Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"query\": \"What is the weather like today?\"\n}"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "pm.test(\"Response asks for clarification\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.response.toLowerCase()).to.include(\"please clarify\");",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Missing Query Field Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"course_material\": \"Optional course material if available.\"\n}"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 422\", function () {",
+                "    pm.response.to.have.status(422);",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Malformed Request",
+        "request": {
+          "method": "POST",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": {
+            "mode": "raw",
+            "raw": "this is not json"
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/assistant",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["assistant"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 422\", function () {",
+                "    pm.response.to.have.status(422);",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "File Upload Request",
+        "request": {
+          "method": "POST",
+          "header": [],
+          "body": {
+            "mode": "formdata",
+            "formdata": [
+              {
+                "key": "file",
+                "type": "file",
+                "src": "test.txt"
+              }
+            ]
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/upload",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["upload"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "var jsonData = pm.response.json();",
+                "pm.test(\"File upload successful\", function () {",
+                "    pm.expect(jsonData.message).to.include(\"File received successfully\");",
+                "});"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "Image Recognition Request",
+        "request": {
+          "method": "POST",
+          "header": [],
+          "body": {
+            "mode": "formdata",
+            "formdata": [
+              {
+                "key": "file",
+                "type": "file",
+                "src": "image.png"
+              }
+            ]
+          },
+          "url": {
+            "raw": "http://127.0.0.1:8000/image_recognition",
+            "protocol": "http",
+            "host": ["127", "0", "0", "1"],
+            "port": "8000",
+            "path": ["image_recognition"]
+          }
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 200\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "",
+                "var jsonData = pm.response.json();",
+                "pm.test(\"Image recognition response is as expected\", function () {",
+                "    pm.expect(jsonData.response.toLowerCase()).to.include(\"recognized text from image\");",
+                "});"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+  
