@@ -1,31 +1,52 @@
 from dotenv import load_dotenv
-load_dotenv()  # Load variables from .env file
+load_dotenv()  # Load environment variables from .env file
 
 import os
+from datetime import date
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
-import openai
 from openai import AsyncOpenAI
+from pymongo import MongoClient
+import gridfs
 
-# Initialize an asynchronous OpenAI client with your API key.
+# Initialize asynchronous OpenAI client
 aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-app = FastAPI(title="CivicHacks 2025 Unified Assistant with Multi-Modal Features")
+app = FastAPI(title="CivicHacks 2025 Unified Assistant with MongoDB Integration")
 
-# Models for text-based requests
+# MongoDB Atlas integration
+MONGO_URI = os.getenv("MONGO_URI")
+mongo_client = MongoClient(MONGO_URI)
+study_db = mongo_client["test"]  # Database name
+fs = gridfs.GridFS(study_db)      # Initialize GridFS instance
+
+# Pydantic models for requests and responses
 class AssistantRequest(BaseModel):
     query: str
-    course_material: Optional[str] = None  # Optional parameter
+    course_material: Optional[str] = None  # Optional override
 
 class AssistantResponse(BaseModel):
     response: str
 
-# Simulated database retrieval for default course material.
 def get_course_material_from_db() -> str:
-    return "Default course material from our database."
+    """
+    Retrieve course material from MongoDB stored in GridFS.
+    """
+    combined = []
+    for grid_out in fs.find():
+        title = grid_out.filename
+        try:
+            content = grid_out.read().decode('utf-8')
+        except Exception:
+            content = "<binary content>"
+        if title or content:
+            combined.append(f"{title}: {content}")
+    return "\n".join(combined) if combined else "No course material available."
 
-# Async helper for chat-style completions (study plans & assignment hints)
+def get_today_date() -> str:
+    return date.today().strftime("%Y-%m-%d")
+
 async def generate_openai_chat_response(
     system_message: str,
     user_message: str,
@@ -42,27 +63,25 @@ async def generate_openai_chat_response(
             temperature=0.7,
             max_tokens=max_tokens
         )
-        # Access the message content using attribute notation.
         return response.choices[0].message.content.strip()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
 
-# Async helper for code completion using the chat completions endpoint.
-# Note: This helper is designed to provide hints rather than complete answers
-# so that users engage in critical thinking rather than simply copying code.
 async def generate_code_completion(prompt: str, max_tokens: int = 100, model: str = "o1-mini") -> str:
+    """
+    Generates a code-completion hint using the chat completions endpoint.
+    Note: This model supports only a temperature of 1.
+    """
     try:
         response = await aclient.chat.completions.create(
             model=model,
             messages=[
-                # We only send a user message; for this model, system messages are not supported.
                 {"role": "user", "content": prompt}
             ],
-            temperature=1,  # o1-mini supports only the default temperature of 1.
-            max_completion_tokens=max_tokens
+            temperature=1,  # Must be 1 for o1-mini.
+            max_tokens=max_tokens
         )
         result = response.choices[0].message.content.strip()
-        # If the response is empty, return a hint message.
         if not result:
             result = "Hint: Review the key steps required to complete this function."
         return result
@@ -71,28 +90,12 @@ async def generate_code_completion(prompt: str, max_tokens: int = 100, model: st
 
 @app.post("/assistant", response_model=AssistantResponse)
 async def unified_assistant(request: AssistantRequest):
-    """
-    Unified endpoint that routes requests based on query content.
-    
-    Recognized intents:
-      - Code completion: If the query mentions "code completion" or "complete code",
-        the assistant will provide a code snippet hint.
-      - Study plan: If the query mentions "study plan" or "plan", it returns a 10-day study plan.
-      - Assignment hint: If the query mentions "assignment", "homework", or "hint",
-        it provides guiding hints without giving full answers.
-    
-    The assistant is designed to help students by nudging them in the right direction,
-    encouraging critical thinking and independent learning.
-    """
     query_lower = request.query.lower()
-    # Use provided course_material or fallback to default material.
     course_material = request.course_material if request.course_material else get_course_material_from_db()
 
     if "code completion" in query_lower or "complete code" in query_lower:
-        # Create a prompt that instructs the model to provide a hint for code completion.
         prompt = (
-            f"You are a helpful code completion assistant. "
-            f"Complete the following code snippet by giving hints and guiding the approach, "
+            f"You are a helpful code completion assistant. Complete the following code snippet by giving hints and guiding the approach, "
             f"but do not provide the complete solution:\n\n"
             f"{request.query}\n"
             f"Context: {course_material}"
@@ -101,20 +104,24 @@ async def unified_assistant(request: AssistantRequest):
         return AssistantResponse(response=completed_code)
 
     elif "study plan" in query_lower or "plan" in query_lower:
+        today = get_today_date()
         user_message = (
-            f"Generate a detailed 10-day study plan for the following request:\n"
+            f"Generate a detailed 10-day study plan starting from {today} for the following request. "
+            f"Reference the 'syllabus' file if relevant.\n\n"
             f"Query: {request.query}\n"
-            f"Course Material: {course_material}"
+            f"Course Material: {course_material}\n"
         )
         system_message = "You are an academic assistant that creates detailed study plans for students."
         plan = await generate_openai_chat_response(system_message, user_message, max_tokens=300)
         return AssistantResponse(response=plan)
     
     elif "assignment" in query_lower or "homework" in query_lower or "hint" in query_lower:
+        lecture_info = get_course_material_from_db()  # Get lecture details from MongoDB.
         user_message = (
             f"Provide a hint to help with the assignment. Do not provide the full solution.\n"
             f"Query: {request.query}\n"
-            f"Course Material: {course_material}"
+            f"Course Material: {course_material}\n"
+            f"Lecture Info: {lecture_info}\n"
         )
         system_message = (
             "You are an academic assistant that provides hints for assignments, "
@@ -126,28 +133,16 @@ async def unified_assistant(request: AssistantRequest):
     else:
         return AssistantResponse(response="Please clarify if you need a study plan, assignment hint, or code completion. Your query did not specify a clear request.")
 
-# Endpoint for file uploading (e.g., for file analysis or storage)
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """
-    Endpoint to upload a file. In production, this could be processed, stored, or analyzed.
-    For now, it returns a dummy response.
-    """
-    try:
-        contents = await file.read()
-        return {"filename": file.filename, "size": len(contents), "message": "File received successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File upload error: {str(e)}")
 
-# Endpoint for image recognition (simulated for demonstration)
+# (Optional) Keep image recognition endpoint for demonstration.
 @app.post("/image_recognition", response_model=AssistantResponse)
 async def image_recognition(file: UploadFile = File(...)):
     """
-    Endpoint for image recognition. This dummy implementation simulates extracting text or features from an image.
+    Simulated image recognition endpoint for demonstration purposes.
     """
     try:
+        # Read the file (not storing it, just simulating processing)
         contents = await file.read()
-        # Simulate image processing, e.g., OCR.
         recognized_text = "Recognized text from image: Test Image"
         return AssistantResponse(response=recognized_text)
     except Exception as e:
@@ -157,3 +152,14 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
+
+@app.post("/upload/")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Read the file from the request.
+        contents = await file.read()
+        # Save the file to GridFS with its filename.
+        file_id = fs.put(contents, filename=file.filename)
+        return {"file_id": str(file_id), "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
