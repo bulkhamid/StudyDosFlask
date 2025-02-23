@@ -6,9 +6,10 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
 import openai
+from openai import AsyncOpenAI
 
-# Set your OpenAI API key from environment variables
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize an asynchronous OpenAI client with your API key.
+aclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = FastAPI(title="CivicHacks 2025 Unified Assistant with Multi-Modal Features")
 
@@ -32,7 +33,7 @@ async def generate_openai_chat_response(
     model: str = "gpt-3.5-turbo"
 ) -> str:
     try:
-        response = await openai.ChatCompletion.acreate(
+        response = await aclient.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_message},
@@ -41,20 +42,30 @@ async def generate_openai_chat_response(
             temperature=0.7,
             max_tokens=max_tokens
         )
-        return response.choices[0].message["content"].strip()
+        # Access the message content using attribute notation.
+        return response.choices[0].message.content.strip()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
 
-# Async helper for code completion using the completions endpoint.
+# Async helper for code completion using the chat completions endpoint.
+# Note: This helper is designed to provide hints rather than complete answers
+# so that users engage in critical thinking rather than simply copying code.
 async def generate_code_completion(prompt: str, max_tokens: int = 100, model: str = "o1-mini") -> str:
     try:
-        response = await openai.Completion.acreate(
+        response = await aclient.chat.completions.create(
             model=model,
-            prompt=prompt,
-            temperature=0.2,
-            max_tokens=max_tokens
+            messages=[
+                # We only send a user message; for this model, system messages are not supported.
+                {"role": "user", "content": prompt}
+            ],
+            temperature=1,  # o1-mini supports only the default temperature of 1.
+            max_completion_tokens=max_tokens
         )
-        return response.choices[0].text.strip()
+        result = response.choices[0].message.content.strip()
+        # If the response is empty, return a hint message.
+        if not result:
+            result = "Hint: Review the key steps required to complete this function."
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI Code Completion API error: {str(e)}")
 
@@ -64,20 +75,27 @@ async def unified_assistant(request: AssistantRequest):
     Unified endpoint that routes requests based on query content.
     
     Recognized intents:
-      - Code completion: if the query mentions "code completion" or "complete code".
-      - Study plan: if the query mentions "study plan" or "plan".
-      - Assignment hint: if the query mentions "assignment", "homework", or "hint".
+      - Code completion: If the query mentions "code completion" or "complete code",
+        the assistant will provide a code snippet hint.
+      - Study plan: If the query mentions "study plan" or "plan", it returns a 10-day study plan.
+      - Assignment hint: If the query mentions "assignment", "homework", or "hint",
+        it provides guiding hints without giving full answers.
     
-    If course_material is not provided, default material is retrieved.
+    The assistant is designed to help students by nudging them in the right direction,
+    encouraging critical thinking and independent learning.
     """
     query_lower = request.query.lower()
+    # Use provided course_material or fallback to default material.
     course_material = request.course_material if request.course_material else get_course_material_from_db()
 
     if "code completion" in query_lower or "complete code" in query_lower:
-        # Call code completion endpoint using a cost-efficient model.
+        # Create a prompt that instructs the model to provide a hint for code completion.
         prompt = (
-            f"Complete the following code snippet:\n{request.query}\n"
-            f"Consider the following context: {course_material}"
+            f"You are a helpful code completion assistant. "
+            f"Complete the following code snippet by giving hints and guiding the approach, "
+            f"but do not provide the complete solution:\n\n"
+            f"{request.query}\n"
+            f"Context: {course_material}"
         )
         completed_code = await generate_code_completion(prompt, max_tokens=150, model="o1-mini")
         return AssistantResponse(response=completed_code)
@@ -112,7 +130,7 @@ async def unified_assistant(request: AssistantRequest):
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Endpoint to upload a file. In a production scenario, this could be processed, stored, or analyzed.
+    Endpoint to upload a file. In production, this could be processed, stored, or analyzed.
     For now, it returns a dummy response.
     """
     try:
@@ -129,7 +147,7 @@ async def image_recognition(file: UploadFile = File(...)):
     """
     try:
         contents = await file.read()
-        # Here you might integrate an OCR or image recognition service.
+        # Simulate image processing, e.g., OCR.
         recognized_text = "Recognized text from image: Test Image"
         return AssistantResponse(response=recognized_text)
     except Exception as e:
@@ -138,3 +156,4 @@ async def image_recognition(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
